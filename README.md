@@ -28,8 +28,8 @@ python -m scripts.download_checkpoints
 ```
 
 ## Todo
-- [x] Integrate MobileSAM for faster 2D detection
-- [x] Integrate GigaPose for faster coarse estimation
+- [ ] Integrate MobileSAM for faster 2D detection
+- [ ] Integrate GigaPose for faster coarse estimation
 
 ## Note
 - The Pipelien is currently support for `single object` detection and pose estimation.
