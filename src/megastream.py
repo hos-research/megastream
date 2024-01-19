@@ -22,6 +22,7 @@ class MegaStream:
     detector: CNOS
     estimator: MegaPose
     visualizer: Visualizer
+    use_depth: bool
     # Frame info
     reinit: bool
     pose6d: PoseEstimatesType
@@ -40,17 +41,22 @@ class MegaStream:
 
     def __init__(
         self,
-        image_size: Tuple[int, int], # (width, height)
-        mesh_path: Path,
-        mesh_units: Optional[str] = 'm',
-        mesh_label: Optional[str] = None,
-        sync: Optional[bool] = False,
-        auto_download: Optional[bool] = False,
-        checkpoint_root: Optional[str] = CHECKPOINTS_ROOT,
-        megapose_type: Optional[str] = 'megapose-1.0-RGB-multi-hypothesis',
-        dinov2_type: Optional[str] = 'dinov2_vitl14',
-        log: Optional[bool] = False,
+        image_size: Tuple[int, int],    # (width, height)
+        mesh_path: Path,                # path to mesh files (ply/obj)
+        sync: Optional[bool] = False,   # synchronize processing each frame
+        calib: Optional[Path] = None,   # path to calibration file
+        mesh_units: Optional[str] = 'm',    # mesh units, 'm' or 'mm'
+        mesh_label: Optional[str] = None,   # mesh label
+        auto_download: Optional[bool] = False,  # auto download checkpoints
+        checkpoint_root: Optional[str] = CHECKPOINTS_ROOT,  # root dir for checkpoints
+        use_depth: Optional[bool] = False,                  # use depth or not
+        dinov2_type: Optional[str] = 'dinov2_vitl14',       # dinov2 model type
+        log: Optional[bool] = False,                        # log iteration info
     ) -> None:
+        # set megapose model
+        self.use_depth = use_depth
+        megapose_type = 'megapose-1.0-RGB-multi-hypothesis' if not use_depth else 'megapose-1.0-RGB-multi-hypothesis-icp'
+
         # init val
         self.reinit = True
         self.pose6d = None
@@ -69,7 +75,9 @@ class MegaStream:
         # checkpoints
         if auto_download:
             logger.info('Auto Download Checkpoints at Default Path')
-            auto_download_default()
+            auto_download_default(
+                megapose_type=megapose_type
+            )
 
         mesh_path = mesh_path.resolve()
         # log info
@@ -96,7 +104,7 @@ class MegaStream:
             object_path=mesh_path,
             label=mesh_label,
             mesh_units=mesh_units,
-            intrinsic=(image_size[0], image_size[1]),
+            intrinsic=image_size if calib is None else calib,
         )
         self.estimator = megapose6d
         self.visualizer = Visualizer(self.estimator)
@@ -108,7 +116,7 @@ class MegaStream:
     def thredshold(
         self,
         detect: Optional[float] = 0.5,
-        refine: Optional[float] = 0.85
+        refine: Optional[float] = 0.8
     ) -> None:
         self.threshold_detect = detect
         self.threshold_refine = refine
@@ -125,12 +133,14 @@ class MegaStream:
         self,
         frame: np.ndarray,
         coarse: Optional[PoseEstimatesType] = None,
-        detections: List[dict] = None
+        detections: List[dict] = None,
+        depth: Optional[np.ndarray] = None
     ) -> Tuple[PoseEstimatesType, dict]:
         TCO, extra = self.estimator.estimate(
             frame=frame,
             coarse_pose=coarse,
-            detections=detections
+            detections=detections,
+            depth=depth if self.use_depth else None
         )
         score = extra["refine"]["score"][0]
         return TCO, score
@@ -138,6 +148,7 @@ class MegaStream:
     def iterate(
         self,
         frame: np.ndarray,
+        depth: Optional[np.ndarray] = None
     ) -> Tuple[dict, float]:
 
         coarse = self.pose6d
@@ -148,20 +159,18 @@ class MegaStream:
             detections, score = self.detect(frame=frame)
             if score < self.threshold_detect:
                 self.reinit = True
-                self.score = score
-                return None, score
+                self.pose6d = None
+                self.score = -score
+                return None, -score
 
         # coarse and refine
-        refined, score = self.estimate(frame=frame, coarse=coarse, detections=detections)
-        if score < self.threshold_refine:
-            self.reinit = True
-            self.score = score
-            return None, score
-        
+        refined, score = self.estimate(frame=frame, coarse=coarse, detections=detections, depth=depth)
+        # check score
+        self.reinit = (score < self.threshold_refine)
         # update pose
         self.pose6d = refined
         self.score = score
-        self.reinit = False
+        # convert to dict
         pose6d_dict = MegaPose.convert_TCO_dict(refined)
 
         return pose6d_dict, score
@@ -169,9 +178,10 @@ class MegaStream:
     def Push(
         self,
         frame: np.ndarray,
+        depth: Optional[np.ndarray] = None
     ) -> int:
         with self.in_queue_lock_:
-            self.in_queue_.put((self.ids_, frame))
+            self.in_queue_.put((self.ids_, frame, depth))
             self.ids_ += 1
             # drop if frame stuck
             if self.in_queue_.qsize() > 240:
@@ -204,7 +214,7 @@ class MegaStream:
         self
     ) -> None:
         self.event_.set()
-        self.in_queue_.put((None, None))
+        self.in_queue_.put((None, None, None))
         self.thread_.join()
         # release MegaPose resources
         self.estimator.release()
@@ -215,17 +225,17 @@ class MegaStream:
     ) -> None:
         logger.info(' ==> Stream Thread Started')
         while True:
-            id_, frame = self.in_queue_.get()
+            id_, frame, depth = self.in_queue_.get()
             if frame is None: break
             # skip frame
             if not self.sync_:
                 with self.in_queue_lock_:
                     while not self.in_queue_.empty():
-                        id_, frame = self.in_queue_.get()
+                        id_, frame, depth = self.in_queue_.get()
                 if frame is None: break
             # iter
             start = time.time()
-            self.iterate(frame=frame)
+            self.iterate(frame=frame, depth=depth)
             end = time.time()
             # log
             if self.log_: tqdm.write(f' [id={id_}] acc={self.score:.2f}, time={(end - start):.3f}')

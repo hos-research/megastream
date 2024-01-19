@@ -3,6 +3,7 @@ import argparse
 import json
 import os
 from pathlib import Path
+import time
 from typing import List, Tuple, Union, Optional
 
 # Third Party
@@ -120,7 +121,7 @@ class MegaPose:
         self, 
         model_name: str = "megapose-1.0-RGB-multi-hypothesis"
     ) -> None:
-        """Init megapose module through input model name.
+        """Init megapose model through input model name.
         Return the current instance of MegaPose.
         """
 
@@ -133,7 +134,8 @@ class MegaPose:
 
     def convert_observation(
         self, 
-        frame: np.ndarray
+        frame: np.ndarray,
+        depth: Optional[np.ndarray] = None
     ) -> ObservationTensor:
         """Load formatted data from image frame
         Return the observation tensor.
@@ -143,7 +145,7 @@ class MegaPose:
         K = self.camera_data.K
 
         assert rgb.shape[:2] == self.camera_data.resolution
-        return ObservationTensor.from_numpy(rgb, None, K)
+        return ObservationTensor.from_numpy(rgb=rgb, depth=depth, K=K)
 
     def convert_detection(
         self, 
@@ -186,20 +188,20 @@ class MegaPose:
         timer = SimpleTimer()
         timer.start()
 
-        module = self.pose_estimator
+        model = self.pose_estimator
 
         # Ensure that detections has the instance_id column
         assert detections is not None, "No detections provided."
         detections = add_instance_id(detections)
 
         # Run the coarse estimator using gt_detections
-        data_TCO_coarse, coarse_extra_data = module.forward_coarse_model(
+        data_TCO_coarse, coarse_extra_data = model.forward_coarse_model(
             observation=observation,
             detections=detections,
         )
 
         # Extract top-K coarse hypotheses
-        data_TCO_filtered = module.filter_pose_estimates(
+        data_TCO_filtered = model.filter_pose_estimates(
             data_TCO_coarse, top_K=self.n_pose_hypotheses, filter_field="coarse_logit"
         )
 
@@ -221,6 +223,7 @@ class MegaPose:
         self, 
         frame: np.ndarray,
         data_TCO_filtered: PoseEstimatesType,
+        depth: Optional[np.ndarray] = None
     ) -> Tuple[PoseEstimatesType, dict]:
         """Runs the pose refiner on the given observation and coarse estimates or last refined predictions
 
@@ -229,15 +232,15 @@ class MegaPose:
             extra_data: dict containing extra data about refined predictions
         """
         
-        observation = self.convert_observation(frame).cuda()
+        observation = self.convert_observation(frame, depth).cuda()
 
         timer = SimpleTimer()
         timer.start()
 
-        module = self.pose_estimator
+        model: PoseEstimator = self.pose_estimator
 
         # Run the refiner
-        preds, refiner_extra_data = module.forward_refiner(
+        preds, refiner_extra_data = model.forward_refiner(
             observation,
             data_TCO_filtered,
             n_iterations=self.n_refiner_iterations,
@@ -245,15 +248,25 @@ class MegaPose:
         data_TCO_refined = preds[f"iteration={self.n_refiner_iterations}"]
 
         # Score the refined poses using the coarse model.
-        data_TCO_scored, scoring_extra_data = module.forward_scoring_model(
+        data_TCO_scored, scoring_extra_data = model.forward_scoring_model(
             observation,
             data_TCO_refined,
         )
 
         # Extract the highest scoring pose estimate for each instance_id
-        data_TCO_final = module.filter_pose_estimates(
+        data_TCO_final = model.filter_pose_estimates(
             data_TCO_scored, top_K=1, filter_field="pose_logit"
         )
+
+        # if depth is used, run ICP refiner
+        depth_refine_time = 0.0
+        if depth is not None:
+            start_time = time.time()
+            data_TCO_final, _ = model.run_depth_refiner(
+                observation,
+                data_TCO_final,
+            )
+            depth_refine_time = time.time() - start_time
 
         timer.stop()
 
@@ -271,7 +284,8 @@ class MegaPose:
         self,
         frame: np.ndarray,
         coarse_pose: PoseEstimatesType = None,
-        detections: List[dict] = None
+        detections: List[dict] = None,
+        depth: Optional[np.ndarray] = None
     ) -> Tuple[PoseEstimatesType, dict]:
         """Estimate 6DoF Pose
 
@@ -288,7 +302,7 @@ class MegaPose:
             data_TCO, extra_coarse = self.inference_coarse(frame, detections)
             extra["coarse"] = extra_coarse
         # run refine
-        data_TCO, extra_refine = self.inference_refine(frame, data_TCO)
+        data_TCO, extra_refine = self.inference_refine(frame, data_TCO, depth)
         extra["refine"] = extra_refine
 
         return data_TCO, extra

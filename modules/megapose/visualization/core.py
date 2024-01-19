@@ -88,8 +88,7 @@ class Visualizer:
     ) -> np.ndarray:
         mesh_overlay = np.zeros_like(frame).astype(np.float32)
         if renderings is None:
-            mesh_overlay = mesh_overlay * alpha + 255 * (1 - alpha)
-            return mesh_overlay.astype(np.uint8)
+            return frame
 
         mask = get_mask_from_rgb(renderings.rgb)
         # overlay

@@ -10,8 +10,8 @@ import argparse
 from cnos.utils.trimesh_utils import as_mesh
 from cnos.utils.trimesh_utils import get_obj_diameter
 from pathlib import Path
-# os.environ["DISPLAY"] = ":1"
-# os.environ["PYOPENGL_PLATFORM"] = "egl"
+os.environ["DISPLAY"] = ":1"
+os.environ["PYOPENGL_PLATFORM"] = "egl"
 
 
 def render(
@@ -117,11 +117,13 @@ if __name__ == "__main__":
 
 def render_object_pose(
     mesh_path: Path,
-    output_dir: Path,
+    output_dir: Path = None,
     predefined_level: int = 0,
     light_itensity: float = 1.0,
     radius: float = 0.4,
-):
+):  
+    if output_dir is None:
+        output_dir = mesh_path.parent / "template"
     predefined_pose = f'obj_poses_level{predefined_level}.npy' 
     poses = np.load(
         Path(__file__).parent.resolve() / "predefined_poses" / predefined_pose

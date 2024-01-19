@@ -145,7 +145,7 @@ class CNOS:
     def detect(
         self,
         image: np.ndarray, # RGB format is required
-        conf_threshold: Optional[float] = 0.5
+        conf_threshold: Optional[float] = 0.0
     ) -> dict:
         rgb = image
         ref_feats = self.features
@@ -163,7 +163,7 @@ class CNOS:
         scores, index = torch.topk(score_per_detection, k=1, dim=-1)
         detections.filter(index)
         # keep only detections with score > conf_threshold
-        # detections.filter(scores > conf_threshold)
+        detections.filter(scores >= conf_threshold)
         detections.add_attribute("scores", scores)
         detections.to_numpy()
         # convert

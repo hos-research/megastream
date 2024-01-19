@@ -28,10 +28,15 @@ conda activate megastream
 python -m scripts.download_checkpoints
 ```
 
+## Todo
+- [x] Integrate MobileSAM for faster 2D detection
+- [x] Integrate GigaPose for faster coarse estimation
+
 ## Note
 - The Pipelien is currently support for `single object` detection and pose estimation.
-- The modified CNOS model is based on `FastSAM`, for other model such as SAM and MobileSAM, edit the code at `${PROJECT_ROOT}/modules/cnos`.
+- The modified CNOS model is based on `FastSAM` , for other model such as SAM and MobileSAM, edit the code at `${PROJECT_ROOT}/modules/cnos`.
 - Due to render conflict or other reason, the template-rendering process is not able to be integrated into full pipeline. 
+- The process speed is related to the resolution of input frames and the size of object model.
 
 ## Usage
 1. Pre-Process CAD model
@@ -41,17 +46,24 @@ python -m scripts.register_object ${path/to/model.ply(obj)}
 ```
 
 2. Run the pipeline on video
+
 ```
-# for synchronized process
+# Run basic pipeline on rgb video
 python -m scripts.run_megastream_on_video 
-    --input ${path/to/input.mp4} 
+    --input ${path/to/rgb.mp4} 
     --object ${path/to/model.ply(obj)} 
     --output ${path/to/output.mp4}
-
-# for simulated realtime process
-python -m scripts.run_megastream_on_video 
-    --input ${path/to/input.mp4} 
-    --object ${path/to/model.ply(obj)} 
-    --output ${path/to/output.mp4} 
-    --realtime
 ```
+
+- For using depth map to run ipc refine
+```
+# Depth images should be packed as RGB video
+# Type '--depth ${path/to/depth.mp4}' as argument
+```
+
+- For simulating real-time process of input frames
+```
+# Type '--no-sync' as argument
+```
+
+## Test on HO3D Dataset
