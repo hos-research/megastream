@@ -66,13 +66,8 @@ python -m scripts.run_megastream_on_video
 
 ## Test on HO3D Dataset
 **Synchronized Process**
-
-https://github.com/Jianxff/megastream/assets/35654252/badcfc8f-2cc0-4372-9fb1-599c34a69bab 
+<video src="https://github.com/Jianxff/megastream/assets/35654252/5089aa68-8739-42ad-b2e7-1ba178e25ea6"></video>
 
 **Realtime Simulation**
-
-https://github.com/Jianxff/megastream/assets/35654252/95aac3d2-f090-4b86-a8ad-30663a8f0d79 
-
-
-
+<video src="https://github.com/Jianxff/megastream/assets/35654252/c93d955d-c5b1-4e4a-beb8-823e858aae3a"></video>
 
