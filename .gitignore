@@ -1,0 +1,9 @@
+# python
+**/__pycache__
+**/__pypackages__
+
+# temp
+**/.tmp
+
+# data (checkpoints)
+/data

@@ -1,0 +1,3 @@
+from modules import PROJECT_DIR, CHECKPOINTS_ROOT
+
+CHECKPOINTS_DIR = CHECKPOINTS_ROOT / 'megapose'
