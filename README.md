@@ -7,8 +7,7 @@ Full pipeline for CAD-based generalizable 6DoF pose estimation, based on CNOS an
 - [CNOS](https://github.com/nv-nguyen/cnos)
 - [MegaPose](https://github.com/megapose6d/megapose6d)
 
-## Installation
-
+## Installation 
 1. Clone the repository
 ```
 git clone https://github.com/Jianxff/megastream
@@ -46,7 +45,6 @@ python -m scripts.register_object ${path/to/model.ply(obj)}
 ```
 
 2. Run the pipeline on video
-
 ```
 # Run basic pipeline on rgb video
 python -m scripts.run_megastream_on_video 
@@ -67,3 +65,14 @@ python -m scripts.run_megastream_on_video
 ```
 
 ## Test on HO3D Dataset
+**Synchronized Process**
+
+https://github.com/Jianxff/megastream/assets/35654252/badcfc8f-2cc0-4372-9fb1-599c34a69bab 
+
+**Realtime Simulation**
+
+https://github.com/Jianxff/megastream/assets/35654252/95aac3d2-f090-4b86-a8ad-30663a8f0d79 
+
+
+
+
