@@ -71,3 +71,5 @@ dependencies:
       - wandb
       - distinctipy
       - scikit-image
+      - flask
+      - flask-socketio

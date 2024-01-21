@@ -10,7 +10,6 @@ import logging
 # Third Party
 import numpy as np
 import cv2
-import torch
 from tqdm import tqdm
 
 # MegaStream
@@ -118,7 +117,7 @@ if __name__ == '__main__':
         pose, score = pipe.Get()
 
         ###### render frame ######
-        frame = pipe.Render(frame=frame, pose6d=pose)
+        frame = pipe.Render(frame=frame, pose6d=pose, show_contour=True)
         add_text_on_image(frame, f'Acc:{score:.2f}', (0, 255, 0) if score >= 0 else (0, 0, 255))
         out_stream.write(frame)
 

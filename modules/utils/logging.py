@@ -38,7 +38,7 @@ class ElapsedFormatter:
 
 def get_logger(name: str):
     logger = logging.getLogger(name)
-    logger.setLevel(logging.INFO)
+    logger.setLevel(logging.WARNING)
     return logger
 
 

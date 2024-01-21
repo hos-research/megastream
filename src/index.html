@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MegaStream</title>
+</head>
+<body>
+    <h1>MegaStream</h1>
+    <canvas id="frame" width="640" height="360"></canvas>
+
+</body>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+<script>
+    var canvas = document.getElementById('frame');
+    var context = canvas.getContext('2d');
+
+    const socket = io();
+    socket.on('image', function(data){
+        const image = new ImageData(new Uint8ClampedArray(data), 640, 360);
+        context.putImageData(image, 0, 0);
+    })
+
+</script>
+
+<style>
+body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+}
+#frame {
+    border-radius: 15px;
+}
+</style>
+</html>

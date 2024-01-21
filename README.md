@@ -37,6 +37,33 @@ python -m scripts.download_checkpoints
 - Due to render conflict or other reason, the template-rendering process is not able to be integrated into full pipeline. 
 - The process speed is related to the resolution of input frames and the size of object model.
 
+## Interface
+1. Construct the pipeline
+```
+MegaStream(
+    image_size: Tuple[int, int],        # (width, height)
+    mesh_path: Union[Path, str],        # path to mesh files (ply/obj)
+    use_depth: Optional[bool] = False,  # use depth or not
+    sync: Optional[bool] = False,       # synchronize processing each frame
+    calib: Optional[Path] = None,       # path to calibration file
+    auto_download: Optional[bool] = True,   # auto download checkpoints
+    log: Optional[bool] = False,            # log iteration info
+)
+```
+
+2. Push a frame to pipeline
+```
+MegaStream.Push(
+    frame: np.ndarray,
+    depth: Optional[np.ndarray] = None
+)
+```
+
+3. Get latest estimation result
+```
+MegaStream.Get() -> Tuple[pose6d_dict, score_float]
+```
+
 ## Usage
 1. Pre-Process CAD model
 ```

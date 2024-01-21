@@ -1,6 +1,6 @@
 # Standard Library
 import numpy as np
-from typing import List, Tuple, Optional
+from typing import List, Union, Tuple, Optional
 from pathlib import Path
 import queue
 import threading
@@ -8,7 +8,7 @@ import time
 from tqdm import tqdm
 
 # Modules
-from modules import CHECKPOINTS_ROOT
+from modules import PROJECT_DIR, CHECKPOINTS_ROOT
 from modules.cnos import CNOS
 from modules.megapose import MegaPose, Visualizer
 from modules.megapose.inference.types import PoseEstimatesType
@@ -42,12 +42,12 @@ class MegaStream:
     def __init__(
         self,
         image_size: Tuple[int, int],    # (width, height)
-        mesh_path: Path,                # path to mesh files (ply/obj)
+        mesh_path: Union[Path, str],                # path to mesh files (ply/obj)
         sync: Optional[bool] = False,   # synchronize processing each frame
         calib: Optional[Path] = None,   # path to calibration file
         mesh_units: Optional[str] = 'm',    # mesh units, 'm' or 'mm'
         mesh_label: Optional[str] = None,   # mesh label
-        auto_download: Optional[bool] = False,  # auto download checkpoints
+        auto_download: Optional[bool] = True,   # auto download checkpoints
         checkpoint_root: Optional[str] = CHECKPOINTS_ROOT,  # root dir for checkpoints
         use_depth: Optional[bool] = False,                  # use depth or not
         dinov2_type: Optional[str] = 'dinov2_vitl14',       # dinov2 model type
@@ -74,21 +74,21 @@ class MegaStream:
 
         # checkpoints
         if auto_download:
-            logger.info('Auto Download Checkpoints at Default Path')
+            print(' ==> Auto Download Checkpoints at Default Path')
             auto_download_default(
                 megapose_type=megapose_type
             )
 
-        mesh_path = mesh_path.resolve()
+        mesh_path = Path(mesh_path).resolve()
         # log info
-        logger.info(f' ==> Pipeline Image Size: {image_size}')
-        logger.info(f' ==> Object Registered: {mesh_path}')
+        print(f' ==> Pipeline Image Size: {image_size}')
+        print(f' ==> Object Registered: {mesh_path}')
 
         # get label
         if mesh_label is None: mesh_label = str(mesh_path.stem)
         
         # init cnos
-        logger.info(' ==> Loading CNOS')
+        print(' ==> Loading CNOS')
         self.detector = CNOS(
             checkpoint = checkpoint_root / 'fastsam' / 'FastSAM-x.pt',
             image_size = max(image_size[0], image_size[1]),
@@ -98,7 +98,7 @@ class MegaStream:
         )
 
         # init megapose
-        logger.info(' ==> Loading MegaPose')
+        print(' ==> Loading MegaPose')
         megapose6d = MegaPose(
             model_type=megapose_type,
             object_path=mesh_path,
@@ -205,9 +205,14 @@ class MegaStream:
         self,
         frame: np.ndarray,
         pose6d: dict,
+        show_contour: Optional[bool] = False
     ) -> np.ndarray:
         renderings = self.visualizer.render(pose6d)
-        fig = self.visualizer.contour_mesh_overlay(frame, renderings)
+        fig: np.ndarray = None
+        if show_contour:
+            fig = self.visualizer.contour_mesh_overlay(frame, renderings)
+        else:
+            fig = self.visualizer.mesh_overlay(frame, renderings)
         return fig
 
     def Release(
@@ -223,7 +228,7 @@ class MegaStream:
     def work_loop_(
         self
     ) -> None:
-        logger.info(' ==> Stream Thread Started')
+        print(' ==> Stream Thread Started')
         while True:
             id_, frame, depth = self.in_queue_.get()
             if frame is None: break
@@ -241,5 +246,5 @@ class MegaStream:
             if self.log_: tqdm.write(f' [id={id_}] acc={self.score:.2f}, time={(end - start):.3f}')
             # notify event
             if self.sync_: self.event_.set()
-        logger.info(' ==> Stream Thread Exited')
+        print(' ==> Stream Thread Exited')
 
