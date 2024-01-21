@@ -16,7 +16,7 @@ cd megastream
 
 2. Setup conda environment
 ```
-conda env create -f environment.yml
+conda env create -f environment.yaml
 conda activate megastream
 ```
 
