@@ -23,6 +23,8 @@ from datetime import timedelta
 from io import StringIO
 from typing import Optional
 
+from modules import LOGGING_LEVEL
+
 logging.basicConfig()
 
 
@@ -38,7 +40,7 @@ class ElapsedFormatter:
 
 def get_logger(name: str):
     logger = logging.getLogger(name)
-    logger.setLevel(logging.WARNING)
+    logger.setLevel(LOGGING_LEVEL)
     return logger
 
 
