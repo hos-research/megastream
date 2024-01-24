@@ -83,6 +83,11 @@ MegaStream.Get() -> Tuple[pose6d_dict, score_float]
 python -m scripts.register_object ${path/to/model.ply(obj)}
 ```
 
+- For using simplified model to accelerate rendering template views for DeepAC
+```
+Type '--simpled ${path/to/simpled/*.ply(obj)}' as argument
+```
+
 2. Run the pipeline on video
 ```
 # Run basic pipeline on rgb video
