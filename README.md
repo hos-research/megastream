@@ -31,14 +31,14 @@ conda install pytorch3d==0.7.1 -c pytorch3d
 # if error occurs, re-install pytorch with: conda install pytorch==1.11.0 -c pytorch
 ```
 
-3. Download DeepAC checkpoints
+3. Download DeepAC checkpoint
 ```
-# Follow the link on 'https://github.com/WangLongZJU/DeepAC' to download model file.
-# Extract the model file
+# Follow the link on 'https://github.com/WangLongZJU/DeepAC' to download checkpoint file.
+# Extract the checkpoint file
 # Move 'model_last.ckpt' and 'train_cfg.yml' to '${PROJECT_ROOT}/data/checkpoints/deep_ac'
 ```
 
-3. Download other checkpoints [Optional]
+4. Download other checkpoints [Optional]
 ```
 # pre-download checkpoints for CNOS and MegaPose
 # the checkpoints will also be automatically downloaded when running the pipeline
