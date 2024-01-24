@@ -127,3 +127,6 @@ python -m scripts.run_megastream_on_video
 **Realtime Simulation**
 <video src="https://github.com/Jianxff/megastream/assets/35654252/c93d955d-c5b1-4e4a-beb8-823e858aae3a"></video>
 
+**Synchronized with Tracking**
+<video src="https://github.com/Jianxff/megastream/assets/35654252/6e5757b6-bc7a-48f6-b13e-eec862f51c62"></video>
+
