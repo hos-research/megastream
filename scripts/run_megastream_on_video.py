@@ -39,7 +39,9 @@ if __name__ == '__main__':
     parser.add_argument("--input", type=str)
     parser.add_argument("--object", type=str)
     parser.add_argument("--depth", type=str, default='')
+    parser.add_argument("--fps", type=int, default=20)
     parser.add_argument("--output", type=str, default="output.mp4")
+    parser.add_argument("--track", action='store_true', default=False)
     parser.add_argument("--no-sync", action='store_true', default=False)
 
     args = parser.parse_args()
@@ -47,14 +49,18 @@ if __name__ == '__main__':
     video_path = Path(args.input)
     object_path = Path(args.object)
     output_path = Path(args.output)
+    output_fps = args.fps
     depth_path = None if args.depth == '' else Path(args.depth)
     sync = not args.no_sync
+    tracking = args.track
 
     print(f'Sync mode: {sync}')
     print(f"Input video: {video_path}")
     print(f"Object Path: {object_path}")
     print(f"Output video: {output_path}")
+    print(f"Output fps: {output_fps}")
     print(f"Depth video: {depth_path}")
+    print(f"Apply Tracking: {tracking}")
     print()
 
     cap = cv2.VideoCapture(str(video_path))
@@ -79,7 +85,7 @@ if __name__ == '__main__':
     out_stream = cv2.VideoWriter(
         str(output_path),
         cv2.VideoWriter_fourcc(*'mp4v'),
-        20,
+        output_fps,
         (im_width * 2, im_height),
         True
     )
@@ -89,6 +95,7 @@ if __name__ == '__main__':
         mesh_path=object_path,
         auto_download=True,
         sync=sync,
+        apply_tracking=tracking,
         use_depth=depth_path is not None,
         log=True
     )

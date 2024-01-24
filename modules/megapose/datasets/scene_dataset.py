@@ -72,6 +72,7 @@ def transform_to_list(T: Transform) -> ListPose:
 class ObjectData:
     # NOTE (Yann): bbox_amodal, bbox_modal, visib_fract should be moved to SceneObservation
     label: str
+    TCO: Optional[np.ndarray] = None
     TWO: Optional[Transform] = None
     unique_id: Optional[int] = None
     bbox_amodal: Optional[np.ndarray] = None  # (4, ) array [xmin, ymin, xmax, ymax]

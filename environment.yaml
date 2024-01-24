@@ -1,7 +1,7 @@
 name: megastream
 channels:
    - conda-forge
-   - pytorch
+   - pytorch 
    - anaconda
    - defaults
 dependencies:
@@ -11,12 +11,14 @@ dependencies:
   - python-wget
   - pytorch==1.11.0
   - torchvision==0.12.0
+  - torchaudio==0.11.0
   - cudatoolkit==11.3.1
   - pinocchio
   - pillow
   - rclone
   - pip:
       - torchmetrics==0.10.3
+      - segmentation-models-pytorch==0.3.3
       - ultralytics
       - meshcat
       - omegaconf
@@ -65,11 +67,14 @@ dependencies:
       - onnx
       - ffmpeg
       - gdown
-      - pytorch-lightning==1.8.1
       - ruamel.yaml
       - pyrender
       - wandb
       - distinctipy
       - scikit-image
+      - imgaug
+      - omegaconf
+      - ray
+      - coremltools
       - flask
       - flask-socketio

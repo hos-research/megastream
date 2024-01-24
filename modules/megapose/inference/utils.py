@@ -220,3 +220,17 @@ def make_detections_from_object_data(object_data: List[ObjectData]) -> Detection
         np.stack([data.bbox_modal for data in object_data]),
     )
     return PandasTensorCollection(infos=infos, bboxes=bboxes)
+
+
+def make_TCO_from_object_data(object_data: List[ObjectData]) -> PoseEstimatesType:
+    infos = pd.DataFrame(
+        dict(
+            label=[data.label for data in object_data],
+            batch_im_id=0,
+            instance_id=np.arange(len(object_data)),
+        )
+    )
+    TCO = torch.as_tensor(
+        np.stack([data.TCO for data in object_data]),
+    )
+    return PandasTensorCollection(infos=infos, poses=TCO)

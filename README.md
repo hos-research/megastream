@@ -1,11 +1,15 @@
 # MegaStream
 
-Full pipeline for CAD-based generalizable 6DoF pose estimation, based on CNOS and MegaPose.
+Full pipeline for CAD-based generalizable 6DoF pose estimation and tracking, based on CNOS, MegaPose and DeepAC.
 
 ## Modules
-*Please check the original page for more information.*
+*Great thanks to these works. Please check the original page for more information.*
 - [CNOS](https://github.com/nv-nguyen/cnos)
 - [MegaPose](https://github.com/megapose6d/megapose6d)
+- [DeepAC](https://github.com/WangLongZJU/DeepAC)
+
+## News
+- [Jan. 25th, 2024] Integrate DeepAC for tracking mode, which is faster than the original tracking with refine-model.
 
 ## Installation 
 1. Clone the repository
@@ -16,8 +20,15 @@ cd megastream
 
 2. Setup conda environment
 ```
+# create conda environment
 conda env create -f environment.yaml
 conda activate megastream
+
+# install pytorch3d
+conda install pytorch3d==0.7.1 -c pytorch3d
+
+# check the version of pytorch and cuda
+# if error occurs, re-install pytorch with: conda install pytorch==1.11.0 -c pytorch
 ```
 
 3. Download checkpoints [Optional]
@@ -48,6 +59,7 @@ MegaStream(
     calib: Optional[Path] = None,       # path to calibration file
     auto_download: Optional[bool] = True,   # auto download checkpoints
     log: Optional[bool] = False,            # log iteration info
+    apply_tracking: Optional[bool] = False  # enable tracking mode
 )
 ```
 
@@ -78,6 +90,11 @@ python -m scripts.run_megastream_on_video
     --input ${path/to/rgb.mp4} 
     --object ${path/to/model.ply(obj)} 
     --output ${path/to/output.mp4}
+```
+
+- For apply tracking mode with DeepAC
+```
+# Type '--track' as argument
 ```
 
 - For using depth map to run ipc refine

@@ -5,13 +5,19 @@ from pathlib import Path
 import queue
 import threading
 import time
+
+# Third Party
 from tqdm import tqdm
+import pandas as pd
 
 # Modules
 from modules import PROJECT_DIR, CHECKPOINTS_ROOT
 from modules.cnos import CNOS
 from modules.megapose import MegaPose, Visualizer
 from modules.megapose.inference.types import PoseEstimatesType
+from modules.deepac import DeepAC, DeepAC_Pose
+
+# Utils
 from modules.utils.download import auto_download_default
 from modules.utils.logging import get_logger
 
@@ -21,11 +27,14 @@ class MegaStream:
     # Model
     detector: CNOS
     estimator: MegaPose
+    tracker: DeepAC
     visualizer: Visualizer
     use_depth: bool
     # Frame info
     reinit: bool
+    tracking: bool
     pose6d: PoseEstimatesType
+    pose_track: DeepAC_Pose
     score: float
     threshold_detect: float
     threshold_refine: float
@@ -42,13 +51,15 @@ class MegaStream:
     def __init__(
         self,
         image_size: Tuple[int, int],    # (width, height)
-        mesh_path: Union[Path, str],                # path to mesh files (ply/obj)
+        mesh_path: Union[Path, str],    # path to mesh files (ply/obj)
+        # optional args
         sync: Optional[bool] = False,   # synchronize processing each frame
         calib: Optional[Path] = None,   # path to calibration file
         mesh_units: Optional[str] = 'm',    # mesh units, 'm' or 'mm'
         mesh_label: Optional[str] = None,   # mesh label
         auto_download: Optional[bool] = True,   # auto download checkpoints
         checkpoint_root: Optional[str] = CHECKPOINTS_ROOT,  # root dir for checkpoints
+        apply_tracking: Optional[bool] = False,             # apply tracking or not
         use_depth: Optional[bool] = False,                  # use depth or not
         dinov2_type: Optional[str] = 'dinov2_vitl14',       # dinov2 model type
         log: Optional[bool] = False,                        # log iteration info
@@ -86,6 +97,7 @@ class MegaStream:
 
         # get label
         if mesh_label is None: mesh_label = str(mesh_path.stem)
+        self.mesh_label = mesh_label
         
         # init cnos
         print(' ==> Loading CNOS')
@@ -109,6 +121,18 @@ class MegaStream:
         self.estimator = megapose6d
         self.visualizer = Visualizer(self.estimator)
 
+        # init tracker 
+        self.apply_tracking = apply_tracking
+        self.tracking = False
+        if apply_tracking:
+            print(' ==> Loading DeepAC')
+            self.tracker = DeepAC(
+                intrinsic=image_size,
+                template_path=mesh_path.parent / f'{mesh_path.stem}.pkl',
+                config_path=checkpoint_root / 'deep_ac' / 'train_cfg.yml',
+                checkpoint_path=checkpoint_root / 'deep_ac' / 'model_last.ckpt'
+            )
+
         # run stream thread
         self.thread_ = threading.Thread(target=self.work_loop_)
         self.thread_.start()
@@ -116,7 +140,7 @@ class MegaStream:
     def thredshold(
         self,
         detect: Optional[float] = 0.5,
-        refine: Optional[float] = 0.8
+        refine: Optional[float] = 0.75
     ) -> None:
         self.threshold_detect = detect
         self.threshold_refine = refine
@@ -145,11 +169,34 @@ class MegaStream:
         score = extra["refine"]["score"][0]
         return TCO, score
 
+    def track(
+        self,
+        frame: np.ndarray,
+        last_pose: Union[DeepAC_Pose, np.ndarray]
+    ) -> Tuple[DeepAC_Pose, float]:
+        pose = self.tracker.Track(
+            image=frame,
+            last_pose=last_pose,
+            reinit=self.reinit
+        )
+        # convert 
+        pose44 = DeepAC.convert_Pose44_numpy(pose)
+        labeled_poses = [{
+            'label': self.mesh_label,
+            'TCO' : pose44
+        }]
+        # scoring
+        score = self.estimator.score(
+            frame=frame,
+            data_TCO=self.estimator.convert_pose(labeled_poses)
+        )
+        return pose, score 
+
     def iterate(
         self,
         frame: np.ndarray,
         depth: Optional[np.ndarray] = None
-    ) -> Tuple[dict, float]:
+    ) -> None:
 
         coarse = self.pose6d
         detections = None
@@ -162,18 +209,34 @@ class MegaStream:
                 self.pose6d = None
                 self.score = -score
                 return None, -score
+        
+        if (self.apply_tracking and not self.tracking) or not self.apply_tracking:
+            # coarse and refine
+            refined, score = self.estimate(frame=frame, coarse=coarse, detections=detections, depth=depth)
+            # check score
+            self.reinit = (score < self.threshold_refine)
+            # update pose
+            self.pose6d = refined
+            self.score = score
+            # init tracking pose
+            self.pose_track = MegaPose.convert_TCO_dict(refined)[self.mesh_label]
 
-        # coarse and refine
-        refined, score = self.estimate(frame=frame, coarse=coarse, detections=detections, depth=depth)
-        # check score
-        self.reinit = (score < self.threshold_refine)
-        # update pose
-        self.pose6d = refined
-        self.score = score
+        elif self.apply_tracking and self.tracking:
+            # track
+            new_pose, score = self.track(frame=frame, last_pose=self.pose_track)
+            # check score
+            self.reinit = (score < self.threshold_refine)
+            # update pose
+            self.pose_track = new_pose
+            self.score = score
+        
+        # set tracking flag
+        if self.apply_tracking: 
+            self.tracking = not self.reinit
+        
         # convert to dict
-        pose6d_dict = MegaPose.convert_TCO_dict(refined)
-
-        return pose6d_dict, score
+        # pose6d_dict = MegaPose.convert_TCO_dict(refined)
+        # return pose6d_dict, score
 
     def Push(
         self,
@@ -198,7 +261,15 @@ class MegaStream:
     ) -> Tuple[dict, float]:
         if self.sync_: 
             self.event_.wait()
-        pose6d_dict = MegaPose.convert_TCO_dict(self.pose6d)
+        # tracking or not
+        if self.apply_tracking and self.tracking:
+            pose_track = self.pose_track
+            if isinstance(pose_track, DeepAC_Pose):
+                pose_track = DeepAC.convert_Pose44_numpy(pose_track)
+            pose6d_dict = {self.mesh_label: pose_track}
+        else:
+            pose6d_dict = MegaPose.convert_TCO_dict(self.pose6d)
+        
         return pose6d_dict, self.score
 
     def Render(

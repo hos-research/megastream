@@ -9,6 +9,7 @@ from typing import List, Tuple, Union, Optional
 # Third Party
 import numpy as np
 import torch
+import pandas as pd
 
 # MegaPose
 from megapose.datasets.object_dataset import RigidObject, RigidObjectDataset
@@ -20,7 +21,8 @@ from megapose.inference.types import (
 )
 from megapose.utils.load_model import NAMED_MODELS, load_named_model
 from megapose.inference.pose_estimator import PoseEstimator
-from megapose.inference.utils import make_detections_from_object_data, add_instance_id
+from megapose.inference.utils import make_detections_from_object_data, add_instance_id, make_TCO_from_object_data
+from megapose.lib3d.transform import Transform
 from megapose.utils.timer import SimpleTimer
 from megapose.utils.logging import get_logger
 
@@ -85,6 +87,7 @@ class MegaPose:
         #     object_mesh.append(RigidObject(label=label, mesh_path=mesh_path.resolve(), mesh_units=mesh_units))
         if label is None:
             label = str(mesh_path.stem)
+        self.label = label
         object_mesh.append(RigidObject(label=label, mesh_path=mesh_path.resolve(), mesh_units=mesh_units))
 
         self.object_dataset = RigidObjectDataset(object_mesh)
@@ -168,6 +171,19 @@ class MegaPose:
 
         detections = make_detections_from_object_data(object_data).cuda()
         return detections
+    
+    def convert_pose(
+        self,
+        labeled_poses: List[dict]
+    ) -> PoseEstimatesType:
+        """Load PoseEstimatesType from pose array
+        """
+        object_data = []
+        for lp in labeled_poses:
+            d = ObjectData(lp["label"])
+            d.TCO = lp["TCO"]
+            object_data.append(d)
+        return make_TCO_from_object_data(object_data)
 
     @torch.no_grad()
     def inference_coarse(
@@ -188,7 +204,7 @@ class MegaPose:
         timer = SimpleTimer()
         timer.start()
 
-        model = self.pose_estimator
+        model: PoseEstimator = self.pose_estimator
 
         # Ensure that detections has the instance_id column
         assert detections is not None, "No detections provided."
@@ -279,6 +295,29 @@ class MegaPose:
         }
 
         return data_TCO_final, extra_data
+
+    def score(
+        self,
+        frame: np.ndarray,
+        data_TCO: PoseEstimatesType
+    ) -> float:
+        """Score current pose.
+
+        Returns:
+            score: score of the pose
+        """
+        observation = self.convert_observation(frame).cuda()
+        model: PoseEstimator = self.pose_estimator
+        # Score current pose using the coarse model.
+        data_TCO = data_TCO.cuda()
+        data_TCO_scored, scoring_extra_data = model.forward_scoring_model(
+            observation=observation,
+            data_TCO=data_TCO
+        )
+        scores = scoring_extra_data["scores"].cpu().numpy()[0].tolist()
+        return scores[0]
+
+
     
     def estimate(
         self,
