@@ -76,5 +76,4 @@ dependencies:
       - omegaconf
       - ray
       - coremltools
-      - flask
-      - flask-socketio
+      - streamlit-webrtc

@@ -9,5 +9,5 @@ LOGGING_LEVEL = logging.INFO
 
 os.environ["MKL_NUM_THREADS"] = "1"
 os.environ["OMP_NUM_THREADS"] = "1"
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
-os.environ["EGL_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["EGL_VISIBLE_DEVICES"] = "0"

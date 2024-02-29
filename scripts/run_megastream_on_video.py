@@ -128,7 +128,7 @@ if __name__ == '__main__':
         add_text_on_image(frame, f'Acc:{score:.2f}', (0, 255, 0) if score >= 0 else (0, 0, 255))
         out_stream.write(frame)
 
-        time.sleep(8 if first_frame else 1 / 20)
+        time.sleep(8 if first_frame else 1 / output_fps)
         first_frame = False
 
     print('\nProcess finished.')

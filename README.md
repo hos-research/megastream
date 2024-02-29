@@ -84,7 +84,7 @@ MegaStream.Get() -> Tuple[pose6d_dict, score_float]
 ```
 
 ## Usage
-1. Pre-Process CAD model
+1. **Pre-Process CAD model**
 ```
 # only *.obj and *.ply are supported
 python -m scripts.register_object ${path/to/model.ply(obj)}
@@ -95,7 +95,8 @@ python -m scripts.register_object ${path/to/model.ply(obj)}
 Type '--simpled ${path/to/simpled/*.ply(obj)}' as argument
 ```
 
-2. Run the pipeline on video
+
+2. **Run the pipeline on video**
 ```
 # Run basic pipeline on rgb video
 python -m scripts.run_megastream_on_video 
@@ -119,6 +120,22 @@ python -m scripts.run_megastream_on_video
 ```
 # Type '--no-sync' as argument
 ```
+
+
+3. **Run real-time pipeline on webcam**
+```
+# Based on streamlit and streamlit-webrtc
+python -m scripts.run_stremlit --object ${path/to/object.ply(obj)}
+```
+
+- For logging
+```
+# Type '--log' as argument
+```
+
+- For more info about streamlit-webrtc  
+  [Streamlit-WebRTC](https://github.com/whitphx/streamlit-webrtc?ref=blog.streamlit.io)
+
 
 ## Test on HO3D Dataset
 **Synchronized Process**
